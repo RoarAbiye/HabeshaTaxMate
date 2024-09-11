@@ -1,0 +1,228 @@
+#!/usr/bin/env node
+
+const yargs = require("yargs/yargs");
+const { alias, describe, required, boolean, number } = require("yargs");
+
+const argv = yargs(process.argv.slice(2))
+  .command("income-tax", "Calculate income tax", (yargs) => {
+    return yargs
+      .option("gross", {
+        alias: "g",
+        describe: "Gross pay",
+        type: "number",
+        required: true,
+      })
+      .option("pension", {
+        alias: "p",
+        describe: "Include pension in calculations",
+        type: boolean,
+      });
+  })
+  .command("net-pay", "Calculate net pay", (yargs) => {
+    return yargs
+      .option("gross", {
+        alias: "g",
+        describe: "Gross pay",
+        type: "number",
+        required: true,
+      })
+      .option("pension", {
+        alias: "p",
+        describe: "Include pension in calculations",
+        type: boolean,
+      })
+      .option("conveyance", {
+        alias: "c",
+        describe:
+          "Include conveyance allowance for employees using transport during work hours due to job nature.",
+        type: boolean,
+      })
+      .option("transport", {
+        alias: "t",
+        describe: "Include allowance for transportation between home and work.",
+        type: boolean,
+      });
+  })
+  .command("gross-pay", "Calculate gross pay from net pay", (yargs) => {
+    return yargs
+      .option("net", {
+        alias: "n",
+        describe: "Net pay",
+        type: "number",
+        required: true,
+      })
+      .option("pension", {
+        alias: "p",
+        describe: "Include pension in calculations",
+        type: boolean,
+      })
+      .option("conveyance", {
+        alias: "c",
+        describe:
+          "Include conveyance allowance for employees using transport during work hours due to job nature.",
+        type: boolean,
+      })
+      .option("transport", {
+        alias: "t",
+        describe: "Include allowance for transportation between home and work.",
+        type: boolean,
+      });
+  })
+  .help()
+  .alias("help", "h").argv;
+
+function getIncomeTax(grossPay) {
+  let taxRate = 0;
+  let deduction = 0;
+
+  if (grossPay <= 600) {
+    return 0;
+  } else if (grossPay <= 1650) {
+    taxRate = 0.1;
+    deduction = 60;
+  } else if (grossPay <= 3200) {
+    taxRate = 0.15;
+    deduction = 142.5;
+  } else if (grossPay <= 5250) {
+    taxRate = 0.2;
+    deduction = 302.5;
+  } else if (grossPay <= 7800) {
+    taxRate = 0.25;
+    deduction = 565.0;
+  } else if (grossPay <= 10900) {
+    taxRate = 0.3;
+    deduction = 955.0;
+  } else {
+    taxRate = 0.35;
+    deduction = 1500.0;
+  }
+
+  return grossPay * taxRate - deduction;
+}
+
+function getPension(grossPay) {
+  // Assuming a fixed pension rate (replace with actual rate if available)
+  const pensionRate = 0.07; // 7%
+  return grossPay * pensionRate;
+}
+
+function getConvAlloance(gross) {
+  let transportAlloance = 0;
+  gross / 4 >= 2200
+    ? (transportAlloance = 2200)
+    : (transportAlloance = gross / 2200);
+  return transportAlloance;
+}
+
+function getNetPay(grossPay, transport, conveyance, pension) {
+  const incomeTax = getIncomeTax(grossPay);
+  const _pension = getPension(grossPay);
+  const _conveyance = conveyance ? getConvAlloance(grossPay) : 0;
+  const _transport = transport ? 600 : 0;
+  return grossPay - incomeTax - _pension + _conveyance + _transport;
+}
+
+function getGrossPay(
+  netPay,
+  includePension = false,
+  includeConveyance = false,
+  includeTransport = false,
+  otherAlloance = 0,
+  low = netPay,
+  high = netPay * 2,
+  tolerance = 0.01,
+) {
+  console.log(
+    netPay,
+    includeTransport,
+    includePension,
+    includeConveyance,
+    otherAlloance,
+    low,
+    high,
+    tolerance,
+  );
+
+  let mid;
+  let calculatedNetPay;
+  const epsilon = 0.01; // Small value to avoid infinite loops
+  let iterations = 0;
+  const maxIterations = 1000; // Safeguard to avoid infinite loops
+
+  while (Math.abs(high - low) > tolerance && iterations < maxIterations) {
+    mid = (low + high) / 2;
+
+    const incomeTax = getIncomeTax(mid);
+    const _pension = includePension ? getPension(mid) : 0;
+    const _transport = includeTransport ? 600 : 0;
+    const _conveyance = includeConveyance ? getConvAlloance(mid) : 0;
+
+    calculatedNetPay =
+      mid - incomeTax - _pension + _transport + _conveyance + otherAlloance;
+
+    if (Math.abs(calculatedNetPay - netPay) < tolerance) {
+      return mid;
+    } else if (calculatedNetPay > netPay) {
+      high = mid; // Adjust the upper bound
+    } else {
+      low = mid + epsilon; // Adjust the lower bound and add epsilon to avoid infinite loop
+    }
+
+    iterations++;
+  }
+
+  // If we exit the loop without finding an answer within tolerance, return mid
+  if (iterations >= maxIterations) {
+    console.warn("Max iterations reached. Returning approximate result.");
+  }
+  return mid;
+}
+
+function formater(number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "ETB",
+  }).format(number);
+}
+
+function main() {
+  const command = argv._[0];
+  let netPay = 0;
+  let grossPay = 0;
+  console.log("\n");
+  switch (command) {
+    case "income-tax":
+      const incomeTax = getIncomeTax(argv.gross);
+      console.log("Income Tax:".padEnd(20), formater(incomeTax).padStart(10));
+      break;
+
+    case "net-pay":
+      netPay = getNetPay(
+        argv.gross,
+        argv.transport,
+        argv.conveyance,
+        argv.pension,
+      );
+      console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
+      break;
+
+    case "gross-pay":
+      grossPay = getGrossPay(
+        argv.net,
+        argv.pension,
+        argv.conveyance,
+        argv.transport,
+        argv.other,
+      );
+      console.log("Gross Pay:".padEnd(20), formater(grossPay).padStart(10));
+      break;
+
+    default:
+      console.error(
+        "Invalid command. Please use one of the following:\n",
+        "  use --help or -h for help\n",
+      );
+  }
+}
+
+main();
