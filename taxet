@@ -110,13 +110,13 @@ function getConvAlloance(gross) {
   let transportAlloance = 0;
   gross / 4 >= 2200
     ? (transportAlloance = 2200)
-    : (transportAlloance = gross / 2200);
+    : (transportAlloance = gross / 4);
   return transportAlloance;
 }
 
 function getNetPay(grossPay, transport, conveyance, pension) {
   const incomeTax = getIncomeTax(grossPay);
-  const _pension = getPension(grossPay);
+  const _pension = pension ? getPension(grossPay) : 0;
   const _conveyance = conveyance ? getConvAlloance(grossPay) : 0;
   const _transport = transport ? 600 : 0;
   return grossPay - incomeTax - _pension + _conveyance + _transport;
@@ -132,17 +132,6 @@ function getGrossPay(
   high = netPay * 2,
   tolerance = 0.01,
 ) {
-  console.log(
-    netPay,
-    includeTransport,
-    includePension,
-    includeConveyance,
-    otherAlloance,
-    low,
-    high,
-    tolerance,
-  );
-
   let mid;
   let calculatedNetPay;
   const epsilon = 0.01; // Small value to avoid infinite loops
@@ -203,6 +192,12 @@ function main() {
         argv.conveyance,
         argv.pension,
       );
+      console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
+      console.log(
+        "Transport:".padEnd(20),
+        formater(getConvAlloance(argv.gross)).padStart(10),
+      );
+      console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       break;
 
