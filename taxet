@@ -194,8 +194,22 @@ function main() {
       );
       console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       console.log(
+        "Pension:".padEnd(20),
+        formater(argv.pension ? getPension(argv.gross) : 0).padStart(10),
+      );
+      console.log(
         "Conveyance:".padEnd(20),
-        formater(getConvAlloance(argv.gross)).padStart(10),
+        formater(argv.conveyance ? getConvAlloance(argv.gross) : 0).padStart(
+          10,
+        ),
+      );
+      console.log(
+        "Transport:".padEnd(20),
+        formater(argv.transport ? 600 : 0).padStart(10),
+      );
+      console.log(
+        "Pension:".padEnd(20),
+        formater(argv.pension ? getPension(argv.gross) : 0).padStart(10),
       );
       break;
 
@@ -208,6 +222,19 @@ function main() {
         argv.other,
       );
       console.log("Gross Pay:".padEnd(20), formater(grossPay).padStart(10));
+      console.log(
+        "Pension:".padEnd(20),
+        formater(argv.pension ? getPension(grossPay) : 0).padStart(10),
+      );
+      console.log(
+        "Conveyance:".padEnd(20),
+        formater(argv.conveyance ? getConvAlloance(grossPay) : 0).padStart(10),
+      );
+      console.log(
+        "Transport:".padEnd(20),
+        formater(argv.transport ? 600 : 0).padStart(10),
+      );
+      console.log(argv);
       break;
 
     default:
