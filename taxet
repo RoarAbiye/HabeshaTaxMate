@@ -194,11 +194,9 @@ function main() {
       );
       console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       console.log(
-        "Transport:".padEnd(20),
+        "Conveyance:".padEnd(20),
         formater(getConvAlloance(argv.gross)).padStart(10),
       );
-      console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
-      console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       break;
 
     case "gross-pay":
