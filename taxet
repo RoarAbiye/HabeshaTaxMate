@@ -127,46 +127,52 @@ function getGrossPay(
   includePension = false,
   includeConveyance = false,
   includeTransport = false,
-  otherAlloance = 0,
-  low = netPay,
-  high = netPay * 2,
-  tolerance = 0.01,
+  initialGuess = netPay,
+  tolerance = 0.0001,
+  maxIterations = 1000,
 ) {
-  let mid;
-  let calculatedNetPay;
-  const epsilon = 0.01; // Small value to avoid infinite loops
+  let grossPay = initialGuess;
   let iterations = 0;
-  const maxIterations = 1000; // Safeguard to avoid infinite loops
+  let epsilon = 0.0001; // Small step for numerical derivative
 
-  while (Math.abs(high - low) > tolerance && iterations < maxIterations) {
-    mid = (low + high) / 2;
+  while (iterations < maxIterations) {
+    const netPayGuess = getNetPay(
+      grossPay,
+      includeTransport,
+      includeConveyance,
+      includePension,
+    );
+    const difference = netPayGuess - netPay;
 
-    const incomeTax = getIncomeTax(mid);
-    const _pension = includePension ? getPension(mid) : 0;
-    const _transport = includeTransport ? 600 : 0;
-    const _conveyance = includeConveyance ? getConvAlloance(mid) : 0;
-
-    calculatedNetPay =
-      mid - incomeTax - _pension + _transport + _conveyance + otherAlloance;
-
-    if (Math.abs(calculatedNetPay - netPay) < tolerance) {
-      return mid;
-    } else if (calculatedNetPay > netPay) {
-      high = mid; // Adjust the upper bound
-    } else {
-      low = mid + epsilon; // Adjust the lower bound and add epsilon to avoid infinite loop
+    if (Math.abs(difference) < tolerance) {
+      // If the difference between the calculated and target net pay is small enough, return the gross pay
+      return grossPay;
     }
+
+    // Numerically approximate the derivative f'(grossPay)
+    const netPayGuessPlusEpsilon = getNetPay(
+      grossPay + epsilon,
+      includeTransport,
+      includeConveyance,
+      includePension,
+    );
+    const derivative = (netPayGuessPlusEpsilon - netPayGuess) / epsilon;
+
+    if (Math.abs(derivative) < tolerance) {
+      // If the derivative is too small, the method might not converge
+      console.warn("Derivative is too small. Returning approximate result.");
+      return grossPay;
+    }
+
+    // Update the gross pay guess using Newton's method
+    grossPay = grossPay - difference / derivative;
 
     iterations++;
   }
 
-  // If we exit the loop without finding an answer within tolerance, return mid
-  if (iterations >= maxIterations) {
-    console.warn("Max iterations reached. Returning approximate result.");
-  }
-  return mid;
+  console.warn("Max iterations reached. Returning approximate result.");
+  return grossPay; // Return the best approximation after max iterations
 }
-
 function formater(number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -194,6 +200,10 @@ function main() {
       );
       console.log("Net Pay:".padEnd(20), formater(netPay).padStart(10));
       console.log(
+        "Income Tax".padEnd(20),
+        formater(getIncomeTax(argv.gross)).padStart(10),
+      );
+      console.log(
         "Pension:".padEnd(20),
         formater(argv.pension ? getPension(argv.gross) : 0).padStart(10),
       );
@@ -207,10 +217,6 @@ function main() {
         "Transport:".padEnd(20),
         formater(argv.transport ? 600 : 0).padStart(10),
       );
-      console.log(
-        "Pension:".padEnd(20),
-        formater(argv.pension ? getPension(argv.gross) : 0).padStart(10),
-      );
       break;
 
     case "gross-pay":
@@ -219,9 +225,12 @@ function main() {
         argv.pension,
         argv.conveyance,
         argv.transport,
-        argv.other,
       );
       console.log("Gross Pay:".padEnd(20), formater(grossPay).padStart(10));
+      console.log(
+        "Income Tax".padEnd(20),
+        formater(getIncomeTax(grossPay)).padStart(10),
+      );
       console.log(
         "Pension:".padEnd(20),
         formater(argv.pension ? getPension(grossPay) : 0).padStart(10),
@@ -234,7 +243,6 @@ function main() {
         "Transport:".padEnd(20),
         formater(argv.transport ? 600 : 0).padStart(10),
       );
-      console.log(argv);
       break;
 
     default:
@@ -244,5 +252,4 @@ function main() {
       );
   }
 }
-
 main();
