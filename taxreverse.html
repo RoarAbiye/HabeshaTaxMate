@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        label {
+            display: inline-block;
+            margin: 10px 0 5px;
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pay Calculator</h1>
+    <label for="calculationType">Select Calculation:</label>
+    <select id="calculationType" onchange="updateForm()">
+        <option value="incomeTax">Calculate Income Tax</option>
+        <option value="netPay">Calculate Net Pay</option>
+        <option value="grossPay">Calculate Gross Pay</option>
+    </select>
+
+    <div id="formContainer">
+        <label id="payLabel">Gross Pay:</label>
+        <input type="number" id="payInput" step="0.01" min="0" required />
+        <div id="options" style="display: none;">
+            <label><input type="checkbox" id="pension" /> Include Pension (7%)</label><br>
+            <label><input type="checkbox" id="conveyance" /> Include Conveyance Allowance (min(2200, gross/4))</label><br>
+            <label><input type="checkbox" id="transport" /> Include Transport Allowance (600 ETB)</label><br>
+        </div>
+    </div>
+
+    <button id="calculateButton" onclick="calculate()">Calculate</button>
+    <div id="results"></div>
+
+    <script>
+        // Income Tax Calculation
+        function getIncomeTax(grossPay) {
+            let taxRate = 0;
+            let deduction = 0;
+            if (grossPay <= 600) return 0;
+            else if (grossPay <= 1650) { taxRate = 0.1; deduction = 60; }
+            else if (grossPay <= 3200) { taxRate = 0.15; deduction = 142.5; }
+            else if (grossPay <= 5250) { taxRate = 0.2; deduction = 302.5; }
+            else if (grossPay <= 7800) { taxRate = 0.25; deduction = 565.0; }
+            else if (grossPay <= 10900) { taxRate = 0.3; deduction = 955.0; }
+            else { taxRate = 0.35; deduction = 1500.0; }
+            return grossPay * taxRate - deduction;
+        }
+
+        // Pension Calculation (7% of gross pay)
+        function getPension(grossPay) {
+            const pensionRate = 0.07;
+            return grossPay * pensionRate;
+        }
+
+        // Conveyance Allowance Calculation
+        function getConvAlloance(gross) {
+            return Math.min(2200, gross / 4);
+        }
+
+        // Net Pay Calculation
+        function getNetPay(grossPay, transport, conveyance, pension) {
+            const incomeTax = getIncomeTax(grossPay);
+            const _pension = pension ? getPension(grossPay) : 0;
+            const _conveyance = conveyance ? getConvAlloance(grossPay) : 0;
+            const _transport = transport ? 600 : 0;
+            return grossPay - incomeTax - _pension + _conveyance + _transport;
+        }
+
+        // Gross Pay Calculation using Newton's Method
+        function getGrossPay(netPay, includePension = false, includeConveyance = false, includeTransport = false, initialGuess = netPay, tolerance = 0.0001, maxIterations = 1000) {
+            let grossPay = initialGuess;
+            let iterations = 0;
+            let epsilon = 0.0001;
+            while (iterations < maxIterations) {
+                const netPayGuess = getNetPay(grossPay, includeTransport, includeConveyance, includePension);
+                const difference = netPayGuess - netPay;
+                if (Math.abs(difference) < tolerance) return grossPay;
+                const netPayGuessPlusEpsilon = getNetPay(grossPay + epsilon, includeTransport, includeConveyance, includePension);
+                const derivative = (netPayGuessPlusEpsilon - netPayGuess) / epsilon;
+                if (Math.abs(derivative) < tolerance) return grossPay;
+                grossPay = grossPay - difference / derivative;
+                iterations++;
+            }
+            return grossPay;
+        }
+
+        // Currency Formatter
+        function formater(number) {
+            return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB" }).format(number);
+        }
+
+        // Update form based on calculation type
+        function updateForm() {
+            const type = document.getElementById('calculationType').value;
+            const payLabel = document.getElementById('payLabel');
+            const options = document.getElementById('options');
+            const payInput = document.getElementById('payInput');
+            payInput.value = ''; // Reset input
+            if (type === 'incomeTax') {
+                payLabel.textContent = 'Gross Pay (ETB):';
+                options.style.display = 'none';
+            } else if (type === 'netPay') {
+                payLabel.textContent = 'Gross Pay (ETB):';
+                options.style.display = 'block';
+            } else if (type === 'grossPay') {
+                payLabel.textContent = 'Net Pay (ETB):';
+                options.style.display = 'block';
+            }
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // Perform calculation and display results
+        function calculate() {
+            const type = document.getElementById('calculationType').value;
+            const payInput = document.getElementById('payInput').value;
+            const pay = parseFloat(payInput);
+            if (isNaN(pay) || pay < 0) {
+                alert('Please enter a valid positive number.');
+                return;
+            }
+            const pension = document.getElementById('pension').checked;
+            const conveyance = document.getElementById('conveyance').checked;
+            const transport = document.getElementById('transport').checked;
+            let results = '';
+
+            if (type === 'incomeTax') {
+                const incomeTax = getIncomeTax(pay);
+                results = `Income Tax: ${formater(incomeTax)}`;
+            } else if (type === 'netPay') {
+                const netPay = getNetPay(pay, transport, conveyance, pension);
+                const incomeTax = getIncomeTax(pay);
+                const _pension = pension ? getPension(pay) : 0;
+                const _conveyance = conveyance ? getConvAlloance(pay) : 0;
+                const _transport = transport ? 600 : 0;
+                results = `
+                    Net Pay: ${formater(netPay)}<br>
+                    Income Tax: ${formater(incomeTax)}<br>
+                    Pension: ${formater(_pension)}<br>
+                    Conveyance: ${formater(_conveyance)}<br>
+                    Transport: ${formater(_transport)}
+                `;
+            } else if (type === 'grossPay') {
+                const grossPay = getGrossPay(pay, pension, conveyance, transport);
+                const incomeTax = getIncomeTax(grossPay);
+                const _pension = pension ? getPension(grossPay) : 0;
+                const _conveyance = conveyance ? getConvAlloance(grossPay) : 0;
+                const _transport = transport ? 600 : 0;
+                results = `
+                    Gross Pay: ${formater(grossPay)}<br>
+                    Income Tax: ${formater(incomeTax)}<br>
+                    Pension: ${formater(_pension)}<br>
+                    Conveyance: ${formater(_conveyance)}<br>
+                    Transport: ${formater(_transport)}
+                `;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = results;
+            resultsDiv.style.display = 'block';
+        }
+
+        // Initialize form on page load
+        updateForm();
+    </script>
+</body>
+</html>
