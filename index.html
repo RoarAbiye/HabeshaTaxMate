@@ -70,13 +70,12 @@
         function getIncomeTax(grossPay) {
             let taxRate = 0;
             let deduction = 0;
-            if (grossPay <= 600) return 0;
-            else if (grossPay <= 1650) { taxRate = 0.1; deduction = 60; }
-            else if (grossPay <= 3200) { taxRate = 0.15; deduction = 142.5; }
-            else if (grossPay <= 5250) { taxRate = 0.2; deduction = 302.5; }
-            else if (grossPay <= 7800) { taxRate = 0.25; deduction = 565.0; }
-            else if (grossPay <= 10900) { taxRate = 0.3; deduction = 955.0; }
-            else { taxRate = 0.35; deduction = 1500.0; }
+            if (grossPay <= 2000) return 0;
+            else if (grossPay <= 4000) { taxRate = 0.15; deduction = 300.15; }
+            else if (grossPay <= 7000) { taxRate = 0.2; deduction = 500.2; }
+            else if (grossPay <= 10000) { taxRate = 0.25; deduction = 850.25; }
+            else if (grossPay <= 14000) { taxRate = 0.3; deduction = 1350.3; }
+            else { taxRate = 0.35; deduction = 2050.30; }
             return grossPay * taxRate - deduction;
         }
 
@@ -244,4 +243,5 @@
         updateForm();
     </script>
 </body>
+
 </html>
